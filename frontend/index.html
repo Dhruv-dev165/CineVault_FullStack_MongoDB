@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineVault — Download 480p, 720p, 1080p Movies & Web Series</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script>
+  <style>
+    body { background-color: #0b0e14; color: #f3f4f6; }
+    .card-hover:hover img { transform: scale(1.05); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+
+  <!-- Top Navbar (User Only - No Admin Upload Button) -->
+  <header class="bg-[#151a24] border-b border-gray-800 sticky top-0 z-40 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <a href="#" onclick="resetFilters()" class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-rose-600 to-amber-500 flex items-center justify-center font-black text-white text-lg shadow">
+          CV
+        </div>
+        <div>
+          <span class="text-xl font-black tracking-tight text-white">CINE<span class="text-rose-500">VAULT</span></span>
+          <span class="block text-[10px] text-gray-400 -mt-1 tracking-widest uppercase">480p • 720p • 1080p Hub</span>
+        </div>
+      </a>
+
+      <!-- Search Bar -->
+      <div class="flex-1 max-w-md w-full order-3 md:order-2">
+        <div class="relative">
+          <input type="text" id="searchInput" placeholder="Search movies, dual audio, web series..."
+            class="w-full bg-[#0b0e14] border border-gray-700 rounded-full pl-4 pr-10 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-rose-500" />
+          <span class="absolute right-3.5 top-2.5 text-gray-400 text-xs">🔍</span>
+        </div>
+      </div>
+
+      <!-- Quality Quick Filter Pills -->
+      <div class="flex items-center gap-1.5 order-2 md:order-3">
+        <button onclick="setQuality('All')" data-q="All" class="q-pill bg-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-full">All</button>
+        <button onclick="setQuality('480p')" data-q="480p" class="q-pill bg-[#0b0e14] text-gray-300 hover:bg-gray-800 border border-gray-700 text-xs font-bold px-3 py-1.5 rounded-full">480p</button>
+        <button onclick="setQuality('720p')" data-q="720p" class="q-pill bg-[#0b0e14] text-gray-300 hover:bg-gray-800 border border-gray-700 text-xs font-bold px-3 py-1.5 rounded-full">720p</button>
+        <button onclick="setQuality('1080p')" data-q="1080p" class="q-pill bg-[#0b0e14] text-gray-300 hover:bg-gray-800 border border-gray-700 text-xs font-bold px-3 py-1.5 rounded-full">1080p</button>
+      </div>
+    </div>
+
+    <!-- Category Navigation Bar -->
+    <nav class="bg-[#0f131b] border-t border-gray-800/80">
+      <div class="max-w-7xl mx-auto px-4 flex items-center gap-2 overflow-x-auto py-2.5 text-xs font-bold uppercase tracking-wider">
+        <button onclick="setCategory('All')" data-cat="All" class="cat-btn bg-rose-600 text-white px-3.5 py-1.5 rounded-md shrink-0">Home</button>
+        <button onclick="setCategory('Bollywood')" data-cat="Bollywood" class="cat-btn text-gray-300 hover:bg-gray-800 px-3.5 py-1.5 rounded-md shrink-0">Bollywood</button>
+        <button onclick="setCategory('Hollywood')" data-cat="Hollywood" class="cat-btn text-gray-300 hover:bg-gray-800 px-3.5 py-1.5 rounded-md shrink-0">Hollywood</button>
+        <button onclick="setCategory('South Dubbed')" data-cat="South Dubbed" class="cat-btn text-gray-300 hover:bg-gray-800 px-3.5 py-1.5 rounded-md shrink-0">South Dubbed</button>
+        <button onclick="setCategory('Web Series')" data-cat="Web Series" class="cat-btn text-gray-300 hover:bg-gray-800 px-3.5 py-1.5 rounded-md shrink-0">Web Series</button>
+        <button onclick="setCategory('4K/1080p')" data-cat="4K/1080p" class="cat-btn text-gray-300 hover:bg-gray-800 px-3.5 py-1.5 rounded-md shrink-0">4K / 1080p</button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+    <div class="bg-[#151a24] border border-gray-800 rounded-xl px-4 py-3 mb-6 flex flex-wrap items-center justify-between gap-2 text-xs">
+      <p class="text-gray-300">
+        <span class="bg-amber-500 text-black font-extrabold px-2 py-0.5 rounded mr-2">TIP</span>
+        Click any movie poster to select <strong>480p</strong>, <strong>720p</strong>, or <strong>1080p</strong> direct download links.
+      </p>
+      <span id="resultCount" class="text-gray-400 font-semibold">Loading catalog...</span>
+    </div>
+
+    <!-- Movie Grid -->
+    <div id="movieGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-5"></div>
+
+    <!-- Empty / Offline State -->
+    <div id="statusMessage" class="hidden text-center py-16">
+      <p id="statusTitle" class="text-lg font-bold text-gray-300">No movies found</p>
+      <p id="statusSub" class="text-sm text-gray-500 mt-1">Try changing your search or filter.</p>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-[#151a24] border-t border-gray-800 py-6 text-center text-xs text-gray-500">
+    <p>© 2026 CineVault Media Portal. All rights reserved.</p>
+  </footer>
+
+  <!-- Movie Details & 480p / 720p / 1080p Download Modal -->
+  <div id="movieModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-[#151a24] border border-gray-700 rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl animate-fadeIn">
+      <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-800 bg-[#0f131b]">
+        <span id="modalCategory" class="text-xs font-bold uppercase tracking-wider text-rose-400">Category</span>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-white text-xl font-bold leading-none">&times;</button>
+      </div>
+
+      <div class="p-5 md:p-6 max-h-[82vh] overflow-y-auto">
+        <div class="flex flex-col sm:flex-row gap-5">
+          <img id="modalPoster" src="" alt="Poster" class="w-40 sm:w-44 h-60 object-cover rounded-xl border border-gray-700 mx-auto sm:mx-0 shrink-0" />
+          <div class="flex-1">
+            <h2 id="modalTitle" class="text-lg md:text-xl font-extrabold text-white leading-snug"></h2>
+            <div class="flex flex-wrap gap-2 mt-2.5 text-xs">
+              <span id="modalYear" class="bg-gray-800 text-gray-300 px-2.5 py-1 rounded-md font-semibold"></span>
+              <span id="modalLang" class="bg-gray-800 text-amber-400 px-2.5 py-1 rounded-md font-semibold"></span>
+              <span id="modalSize" class="bg-gray-800 text-emerald-400 px-2.5 py-1 rounded-md font-semibold"></span>
+            </div>
+            <p id="modalSynopsis" class="text-sm text-gray-400 mt-3 leading-relaxed"></p>
+          </div>
+        </div>
+
+        <!-- Quality Download Buttons -->
+        <div class="mt-6 pt-5 border-t border-gray-800">
+          <h3 class="text-center text-xs font-extrabold uppercase tracking-widest text-amber-400 mb-4">
+            — Select Download Quality —
+          </h3>
+
+          <div id="qualityButtons" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+
+          <!-- Link Verification & Direct Download Box -->
+          <div id="downloadBox" class="hidden mt-5 bg-[#0b0e14] border border-gray-700 rounded-xl p-4 text-center">
+            <p id="verifyText" class="text-sm font-semibold text-amber-400">Verifying secure link... 3s</p>
+            <div id="readyLinkArea" class="hidden space-y-3">
+              <p class="text-xs text-emerald-400 font-bold uppercase">✔ Direct Link Ready (<span id="selectedQualityLabel"></span>)</p>
+              <div class="flex flex-wrap items-center justify-center gap-2">
+                <a id="directDownloadBtn" href="#" target="_blank" rel="noopener noreferrer"
+                  class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-lg transition">
+                  ⬇ Download Now
+                </a>
+                <button onclick="copyActiveLink()"
+                  class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold text-sm px-4 py-2.5 rounded-lg transition">
+                  Copy Link
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentCategory = 'All';
+    let currentQuality = 'All';
+    let searchQuery = '';
+    let activeUrl = '';
+    let verifyTimer = null;
+
+    async function fetchMovies() {
+      const grid = document.getElementById('movieGrid');
+      const statusMsg = document.getElementById('statusMessage');
+      const countEl = document.getElementById('resultCount');
+
+      try {
+        const params = new URLSearchParams({
+          category: currentCategory,
+          quality: currentQuality,
+          search: searchQuery
+        });
+
+        const res = await fetch(`${API_BASE_URL}/api/movies?${params.toString()}`);
+        if (!res.ok) throw new Error('API Error');
+        const movies = await res.json();
+
+        countEl.textContent = `${movies.length} Title${movies.length === 1 ? '' : 's'} Available`;
+
+        if (movies.length === 0) {
+          grid.innerHTML = '';
+          statusMsg.classList.remove('hidden');
+          document.getElementById('statusTitle').textContent = 'No movies found';
+          document.getElementById('statusSub').textContent = 'Try a different keyword or filter.';
+          return;
+        }
+
+        statusMsg.classList.add('hidden');
+        grid.innerHTML = movies.map(movie => {
+          const badges = ['480p', '720p', '1080p']
+            .filter(q => movie.links && movie.links[q])
+            .map(q => `<span class="bg-black/80 border border-gray-700 text-[10px] font-bold px-1.5 py-0.5 rounded text-amber-400">${q}</span>`)
+            .join('');
+
+          return `
+            <div onclick='openMovieModal(${JSON.stringify(movie).replace(/'/g, "&#39;")})'
+              class="card-hover cursor-pointer bg-[#151a24] border border-gray-800 hover:border-rose-500/60 rounded-xl overflow-hidden shadow-md transition flex flex-col">
+              <div class="relative aspect-[2/3] bg-gray-900 overflow-hidden">
+                <img src="${movie.poster}" alt="${movie.title}"
+                  onerror="this.src='https://placehold.co/400x600/151a24/e11d48?text=No+Poster'"
+                  class="w-full h-full object-cover transition duration-300" />
+                <span class="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded shadow">
+                  ${movie.qualityTag || 'HD'}
+                </span>
+                <div class="absolute bottom-2 left-2 right-2 flex flex-wrap gap-1">
+                  ${badges}
+                </div>
+              </div>
+              <div class="p-3 flex-1 flex flex-col justify-between">
+                <h3 class="text-xs sm:text-sm font-bold text-gray-100 line-clamp-2 leading-snug hover:text-rose-400">
+                  ${movie.title}
+                </h3>
+                <div class="flex items-center justify-between text-[11px] text-gray-400 mt-2 pt-2 border-t border-gray-800/80">
+                  <span>${movie.category}</span>
+                  <span>${movie.year}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        grid.innerHTML = '';
+        statusMsg.classList.remove('hidden');
+        document.getElementById('statusTitle').textContent = 'Backend Server Not Connected';
+        document.getElementById('statusSub').textContent = 'Please start the backend server (node server.js) on port 5000.';
+        countEl.textContent = 'Offline';
+      }
+    }
+
+    function setCategory(cat) {
+      currentCategory = cat;
+      document.querySelectorAll('.cat-btn').forEach(btn => {
+        if (btn.dataset.cat === cat) {
+          btn.className = 'cat-btn bg-rose-600 text-white px-3.5 py-1.5 rounded-md shrink-0';
+        } else {
+          btn.className = 'cat-btn text-gray-300 hover:bg-gray-800 px-3.5 py-1.5 rounded-md shrink-0';
+        }
+      });
+      fetchMovies();
+    }
+
+    function setQuality(q) {
+      currentQuality = q;
+      document.querySelectorAll('.q-pill').forEach(btn => {
+        if (btn.dataset.q === q) {
+          btn.className = 'q-pill bg-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-full';
+        } else {
+          btn.className = 'q-pill bg-[#0b0e14] text-gray-300 hover:bg-gray-800 border border-gray-700 text-xs font-bold px-3 py-1.5 rounded-full';
+        }
+      });
+      fetchMovies();
+    }
+
+    function resetFilters() {
+      currentCategory = 'All';
+      currentQuality = 'All';
+      searchQuery = '';
+      document.getElementById('searchInput').value = '';
+      setCategory('All');
+      setQuality('All');
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      fetchMovies();
+    });
+
+    function openMovieModal(movie) {
+      clearInterval(verifyTimer);
+      document.getElementById('downloadBox').classList.add('hidden');
+      document.getElementById('modalCategory').textContent = movie.category;
+      document.getElementById('modalPoster').src = movie.poster;
+      document.getElementById('modalTitle').textContent = movie.title;
+      document.getElementById('modalYear').textContent = 'Year: ' + movie.year;
+      document.getElementById('modalLang').textContent = movie.language || 'Dual Audio';
+      document.getElementById('modalSize').textContent = movie.size || 'HD';
+      document.getElementById('modalSynopsis').textContent = movie.synopsis || '';
+
+      const qContainer = document.getElementById('qualityButtons');
+      const qualities = [
+        { key: '480p', label: '480p [SD]', color: 'from-emerald-600 to-teal-700' },
+        { key: '720p', label: '720p [HD]', color: 'from-amber-500 to-orange-600' },
+        { key: '1080p', label: '1080p [FHD]', color: 'from-rose-600 to-pink-700' }
+      ];
+
+      qContainer.innerHTML = qualities.map(q => {
+        const url = movie.links ? movie.links[q.key] : '';
+        if (!url) {
+          return `
+            <button disabled class="bg-gray-800/50 border border-gray-800 text-gray-600 py-3 px-4 rounded-xl text-xs font-bold cursor-not-allowed">
+              ${q.label} — Not Available
+            </button>
+          `;
+        }
+        return `
+          <button onclick="startDownloadFlow('${q.key}', '${url.replace(/'/g, "\'")}')"
+            class="bg-gradient-to-r ${q.color} hover:opacity-90 text-white py-3 px-4 rounded-xl text-sm font-extrabold shadow-lg transition transform active:scale-95">
+            ⬇ Download ${q.label}
+          </button>
+        `;
+      }).join('');
+
+      const modal = document.getElementById('movieModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function startDownloadFlow(quality, url) {
+      clearInterval(verifyTimer);
+      activeUrl = url;
+      const box = document.getElementById('downloadBox');
+      const verifyText = document.getElementById('verifyText');
+      const readyArea = document.getElementById('readyLinkArea');
+
+      box.classList.remove('hidden');
+      verifyText.classList.remove('hidden');
+      readyArea.classList.add('hidden');
+
+      let sec = 3;
+      verifyText.textContent = `Generating ${quality} direct link... ${sec}s`;
+
+      verifyTimer = setInterval(() => {
+        sec--;
+        if (sec > 0) {
+          verifyText.textContent = `Generating ${quality} direct link... ${sec}s`;
+        } else {
+          clearInterval(verifyTimer);
+          verifyText.classList.add('hidden');
+          readyArea.classList.remove('hidden');
+          document.getElementById('selectedQualityLabel').textContent = quality;
+          document.getElementById('directDownloadBtn').href = url;
+        }
+      }, 1000);
+    }
+
+    function copyActiveLink() {
+      if (!activeUrl) return;
+      navigator.clipboard.writeText(activeUrl);
+      alert('Download link copied to clipboard!');
+    }
+
+    function closeModal() {
+      clearInterval(verifyTimer);
+      const modal = document.getElementById('movieModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // Initial load
+    fetchMovies();
+  </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+[
+  {
+    "id": "mov_101",
+    "title": "Big Buck Bunny (2008) Dual Audio [480p, 720p, 1080p] Full Movie",
+    "category": "Hollywood",
+    "year": "2008",
+    "qualityTag": "1080p WEB-DL",
+    "language": "English / Hindi Dub",
+    "size": "420MB / 980MB / 2.1GB",
+    "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/600px-Big_buck_bunny_poster_big.jpg",
+    "synopsis": "A giant, kind-hearted rabbit faces three bullying rodents in a lush forest meadow and orchestrates an elaborate, hilarious payback.",
+    "links": {
+      "480p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      "720p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      "1080p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+    },
+    "createdAt": "2026-11-20T00:00:00.000Z"
+  },
+  {
+    "id": "mov_102",
+    "title": "Sintel (2010) [480p, 720p, 1080p] Fantasy Adventure",
+    "category": "Hollywood",
+    "year": "2010",
+    "qualityTag": "1080p BluRay",
+    "language": "English",
+    "size": "380MB / 850MB / 1.8GB",
+    "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Sintel_poster.jpg/600px-Sintel_poster.jpg",
+    "synopsis": "A lonely young woman travels across harsh mountains and deserts in search of a baby dragon she once befriended.",
+    "links": {
+      "480p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+      "720p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+      "1080p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4"
+    },
+    "createdAt": "2026-11-20T00:00:00.000Z"
+  },
+  {
+    "id": "mov_103",
+    "title": "Tears of Steel (2012) Sci-Fi Action [480p, 720p, 1080p]",
+    "category": "South Dubbed",
+    "year": "2012",
+    "qualityTag": "1080p HD",
+    "language": "Hindi / English",
+    "size": "410MB / 920MB / 2.0GB",
+    "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Tears_of_Steel_poster.jpg/600px-Tears_of_Steel_poster.jpg",
+    "synopsis": "In a dystopian future Amsterdam, a group of warriors and scientists gather at the Oude Kerk to stage a desperate stand against destructive robots.",
+    "links": {
+      "480p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+      "720p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+      "1080p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4"
+    },
+    "createdAt": "2026-11-20T00:00:00.000Z"
+  },
+  {
+    "id": "mov_104",
+    "title": "Cosmos Laundromat (2015) Season 1 [480p, 720p, 1080p]",
+    "category": "Web Series",
+    "year": "2015",
+    "qualityTag": "1080p WEB-DL",
+    "language": "English / Hindi",
+    "size": "350MB / 780MB / 1.6GB",
+    "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Cosmos_Laundromat_-_First_Cycle_-_Official_Poster.jpg/600px-Cosmos_Laundromat_-_First_Cycle_-_Official_Poster.jpg",
+    "synopsis": "On a desolate island, a suicidal sheep named Franck meets his fate in a quirky salesman who offers him the gift of a lifetime.",
+    "links": {
+      "480p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      "720p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      "1080p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+    },
+    "createdAt": "2026-11-20T00:00:00.000Z"
+  }
+]

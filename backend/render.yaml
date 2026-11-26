@@ -1,0 +1,19 @@
+# Render Blueprint: deploys the backend (which also serves the website and admin panel).
+# Push the CONTENTS of the CineVault_FullStack folder to GitHub (so backend/ and frontend/ are at the repo root).
+# In Render: New + -> Blueprint -> select the repo. Then set MONGODB_URI and ADMIN_PASSWORD in the dashboard.
+services:
+  - type: web
+    name: cinevault
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false        # paste your Atlas connection string in the Render dashboard
+      - key: ADMIN_PASSWORD
+        sync: false        # set a strong password in the Render dashboard
