@@ -105,7 +105,7 @@ async function syncTmdbMetadata() {
     let imported = 0;
     for (const movie of unique.values()) {
       const year = movie.release_date ? movie.release_date.slice(0, 4) : '';
-      const category = movie.original_language === 'hi' ? 'Bollywood' : 'Hollywood';
+      const category = movie.original_language === 'hi' ? 'Bollywood' : (['ta', 'te', 'ml', 'kn'].includes(movie.original_language) ? 'South Dubbed' : 'Hollywood');
       const doc = {
         id: `tmdb_${movie.id}`,
         title: movie.title || movie.original_title || 'Untitled',
