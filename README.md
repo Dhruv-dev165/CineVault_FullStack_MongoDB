@@ -1,5 +1,10 @@
 # CineVault — Movie Portal (Frontend + Backend)
 
+## Live website
+
+- **Live Demo:** https://cinevault-48sj.onrender.com
+
+
 ```
 CineVault_FullStack/
 ├── backend/                 API + MongoDB + admin panel (keep private)
