@@ -74,6 +74,71 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// ---------- TMDB metadata sync (metadata/posters only; never downloads video) ----------
+const TMDB_API_KEY = process.env.TMDB_API_KEY || '';
+const TMDB_READ_ACCESS_TOKEN = process.env.TMDB_READ_ACCESS_TOKEN || '';
+let lastTmdbSyncAt = 0;
+let tmdbSyncInFlight = null;
+
+async function syncTmdbMetadata() {
+  if (!TMDB_API_KEY && !TMDB_READ_ACCESS_TOKEN) {
+    return { enabled: false, imported: 0, message: 'TMDB credentials are not configured.' };
+  }
+  if (tmdbSyncInFlight) return tmdbSyncInFlight;
+  tmdbSyncInFlight = (async () => {
+    const endpoints = ['now_playing', 'upcoming', 'popular'];
+    const headers = { accept: 'application/json' };
+    const results = await Promise.all(endpoints.map(async endpoint => {
+      const url = new URL(`https://api.themoviedb.org/3/movie/${endpoint}`);
+      url.searchParams.set('language', 'en-US');
+      url.searchParams.set('region', 'IN');
+      url.searchParams.set('page', '1');
+      if (TMDB_API_KEY) url.searchParams.set('api_key', TMDB_API_KEY);
+      if (TMDB_READ_ACCESS_TOKEN) headers.Authorization = `Bearer ${TMDB_READ_ACCESS_TOKEN}`;
+      const response = await fetch(url, { headers });
+      if (!response.ok) throw new Error(`TMDB ${endpoint} request failed: HTTP ${response.status}`);
+      const body = await response.json();
+      return body.results || [];
+    }));
+    const unique = new Map();
+    results.flat().forEach(movie => { if (movie && movie.id) unique.set(movie.id, movie); });
+    let imported = 0;
+    for (const movie of unique.values()) {
+      const year = movie.release_date ? movie.release_date.slice(0, 4) : '';
+      const category = movie.original_language === 'hi' ? 'Bollywood' : 'Hollywood';
+      const doc = {
+        id: `tmdb_${movie.id}`,
+        title: movie.title || movie.original_title || 'Untitled',
+        category,
+        year: year || String(new Date().getFullYear()),
+        qualityTag: 'MOVIE INFO',
+        language: movie.original_language || 'Unknown',
+        size: '',
+        poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+        synopsis: movie.overview || 'Synopsis not available.',
+        links: { '480p': '', '720p': '', '1080p': '' }
+      };
+      const result = await Movie.updateOne(
+        { id: doc.id },
+        { $setOnInsert: doc },
+        { upsert: true }
+      );
+      if (result.upsertedCount) imported++;
+    }
+    lastTmdbSyncAt = Date.now();
+    console.log(`TMDB metadata sync complete: ${imported} new titles`);
+    return { enabled: true, imported, checked: unique.size, syncedAt: new Date(lastTmdbSyncAt).toISOString() };
+  })();
+  try { return await tmdbSyncInFlight; }
+  finally { tmdbSyncInFlight = null; }
+}
+
+function maybeSyncTmdb() {
+  if ((TMDB_API_KEY || TMDB_READ_ACCESS_TOKEN) && Date.now() - lastTmdbSyncAt > 12 * 60 * 60 * 1000) {
+    syncTmdbMetadata().catch(err => console.error('TMDB metadata sync failed:', err.message));
+  }
+}
+
 // ---------- App ----------
 const app = express();
 app.set('trust proxy', 1); // needed behind Render/Railway proxies so req.ip is the real client
@@ -85,6 +150,7 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'CineVault' 
 
 // PUBLIC: list movies (?category=, ?search=, ?quality=)
 app.get('/api/movies', async (req, res) => {
+  maybeSyncTmdb();
   try {
     const { category, search, quality } = req.query;
     const filter = {};
@@ -115,6 +181,28 @@ app.get('/api/movies/:id', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not load movie' });
+  }
+});
+
+// PUBLIC: TMDB metadata sync status (never exposes credentials)
+app.get('/api/tmdb/status', (_req, res) => {
+  res.json({
+    configured: Boolean(TMDB_API_KEY || TMDB_READ_ACCESS_TOKEN),
+    lastSync: lastTmdbSyncAt ? new Date(lastTmdbSyncAt).toISOString() : null,
+    intervalHours: 12,
+    source: 'TMDB metadata and posters only'
+  });
+});
+
+// ADMIN: trigger a metadata-only TMDB import
+app.post('/api/admin/tmdb-sync', requireAdmin, async (_req, res) => {
+  try {
+    const result = await syncTmdbMetadata();
+    if (!result.enabled) return res.status(503).json(result);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('TMDB metadata sync failed:', err.message);
+    res.status(502).json({ success: false, error: 'TMDB sync failed. Check the server configuration and TMDB credentials.' });
   }
 });
 
@@ -204,6 +292,9 @@ async function start() {
   await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
   console.log('MongoDB connected');
   await seedIfEmpty();
+  maybeSyncTmdb();
+  const tmdbTimer = setInterval(maybeSyncTmdb, 60 * 60 * 1000);
+  if (tmdbTimer.unref) tmdbTimer.unref();
   server = app.listen(PORT, () => {
     console.log('=================================================');
     console.log(` CineVault website:  http://localhost:${PORT}`);
