@@ -21,9 +21,14 @@ function safeHttpUrl(value) {
 
 function posterMarkup(movie) {
   const poster = safeHttpUrl(movie.poster || movie.posterUrl || movie.image);
-  return poster
-    ? '<img class="movie-poster-image" src="' + safe(poster) + '" alt="' + safe(movie.title || movie.name || "Movie poster") + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'"><div class="movie-poster-fallback" style="display:none">🎬</div>'
+  const rating = Number.parseFloat(movie.imdbRating);
+  const ratingBadge = Number.isFinite(rating)
+    ? '<span class="imdb-rating-badge" title="IMDb rating' + (movie.imdbVotes ? ' · ' + safe(movie.imdbVotes) + ' votes' : '') + '"><span class="imdb-star">★</span> IMDb ' + rating.toFixed(1) + '</span>'
+    : '';
+  const art = poster
+    ? '<img class="movie-poster-image" src="' + safe(poster) + '" alt="' + safe(movie.title || movie.name || "Movie poster") + '" loading="lazy" onerror="this.style.display=\\'none\\';this.nextElementSibling.style.display=\\'grid\\'"><div class="movie-poster-fallback" style="display:none">🎬</div>'
     : '<div class="movie-poster-fallback">🎬</div>';
+  return '<div class="poster-art">' + art + '</div>' + ratingBadge;
 }
 
 function getFilteredMovies() {
