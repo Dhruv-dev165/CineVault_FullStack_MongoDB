@@ -79,10 +79,24 @@ const OMDB_API_KEY = process.env.OMDB_API_KEY || '';
 const imdbRatingCache = new Map();
 const IMDB_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 
+function imdbLookupTitle(movie) {
+  // Catalogue titles may contain year, platform, quality and audio details.
+  // Send OMDb the clean title so it can match the correct IMDb record.
+  return String(movie.title || '')
+    .trim()
+    .replace(/\s*[\[(]\d{4}[\])]\s*.*$/, '')
+    .replace(/\s+(?:WEB-DL|WEBRip|BluRay|HDRip|HDTV|Prime Video|Netflix|Hindi Dubbed|Dual Audio).*$/i, '')
+    .trim();
+}
+
+function imdbLookupYear(movie) {
+  return String(movie.year || '').match(/\d{4}/)?.[0] || '';
+}
+
 async function getImdbMetadata(movie) {
-  const title = String(movie.title || '').trim();
+  const title = imdbLookupTitle(movie);
   if (!OMDB_API_KEY || !title) return movie;
-  const year = String(movie.year || '').match(/\\d{4}/)?.[0] || '';
+  const year = imdbLookupYear(movie);
   const cacheKey = title.toLowerCase() + '|' + year;
   const cached = imdbRatingCache.get(cacheKey);
   if (cached && Date.now() - cached.at < IMDB_CACHE_TTL_MS) return { ...movie, ...cached.data };
@@ -94,7 +108,7 @@ async function getImdbMetadata(movie) {
     const response = await fetch(url, { headers: { accept: 'application/json' } });
     if (!response.ok) throw new Error('OMDb HTTP ' + response.status);
     const data = await response.json();
-    const rating = data.Response === 'True' && /^\\d+(\\.\\d+)?$/.test(data.imdbRating || '') ? data.imdbRating : '';
+    const rating = data.Response === 'True' && /^\d+(\.\d+)?$/.test(data.imdbRating || '') ? data.imdbRating : '';
     const metadata = {
       imdbRating: rating,
       imdbVotes: data.imdbVotes && data.imdbVotes !== 'N/A' ? data.imdbVotes : '',
@@ -113,12 +127,11 @@ let imdbWarmupInProgress = false;
 async function addImdbRatings(movies) {
   if (!OMDB_API_KEY || !movies.length) return movies;
 
-  // Never make the public catalogue wait for dozens of third-party OMDb calls.
-  // Return immediately with cached ratings; warm the cache in the background.
+  // Serve cached ratings immediately, then warm missing ratings in background.
   const now = Date.now();
   const response = movies.map(movie => {
-    const title = String(movie.title || '').trim();
-    const year = String(movie.year || '').match(/\d{4}/)?.[0] || '';
+    const title = imdbLookupTitle(movie);
+    const year = imdbLookupYear(movie);
     const cached = imdbRatingCache.get(title.toLowerCase() + '|' + year);
     return cached && now - cached.at < IMDB_CACHE_TTL_MS
       ? { ...movie, ...cached.data }
