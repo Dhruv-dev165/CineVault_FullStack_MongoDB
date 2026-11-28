@@ -98,6 +98,11 @@ function openMovie(movie) {
     '<h2 style="margin:12px 0">' + safe(movie.title || movie.name || "Untitled") + '</h2>' +
     '<p>' + safe(movie.category || movie.type || "Movie") + ' · ' + safe(movie.year || "") + ' · ' + safe(movie.language || "") + '</p>' +
     '<p style="line-height:1.6">' + safe(movie.synopsis || "No description available.") + '</p>' +
+    (movie.imdbRating ? '<p style="margin-top:10px"><strong>IMDb:</strong> ' + safe(movie.imdbRating) + '/10' + (movie.imdbVotes ? ' · ' + safe(movie.imdbVotes) + ' votes' : '') + '</p>' : '') +
+    (movie.genres && movie.genres.length ? '<p style="margin-top:6px"><strong>Genre:</strong> ' + safe(movie.genres.join(', ')) + '</p>' : '') +
+    (movie.director ? '<p style="margin-top:6px"><strong>Director:</strong> ' + safe(movie.director) + '</p>' : '') +
+    (movie.cast && movie.cast.length ? '<p style="margin-top:6px"><strong>Cast:</strong> ' + safe(movie.cast.join(', ')) + '</p>' : '') +
+    (movie.runtime ? '<p style="margin-top:6px"><strong>Runtime:</strong> ' + safe(movie.runtime) + ' min</p>' : '') +
     (linkButtons ? '<div style="display:grid;gap:10px;margin-top:18px">' + linkButtons + '</div>' :
       '<p style="margin-top:18px;color:#fbbf24">No authorized viewing links have been added for this title yet.</p>');
   document.body.appendChild(dialog);
