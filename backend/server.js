@@ -108,13 +108,37 @@ async function getImdbMetadata(movie) {
   }
 }
 
+let imdbWarmupInProgress = false;
+
 async function addImdbRatings(movies) {
   if (!OMDB_API_KEY || !movies.length) return movies;
-  const enriched = [];
-  for (let i = 0; i < movies.length; i += 5) {
-    enriched.push(...await Promise.all(movies.slice(i, i + 5).map(getImdbMetadata)));
+
+  // Never make the public catalogue wait for dozens of third-party OMDb calls.
+  // Return immediately with cached ratings; warm the cache in the background.
+  const now = Date.now();
+  const response = movies.map(movie => {
+    const title = String(movie.title || '').trim();
+    const year = String(movie.year || '').match(/\d{4}/)?.[0] || '';
+    const cached = imdbRatingCache.get(title.toLowerCase() + '|' + year);
+    return cached && now - cached.at < IMDB_CACHE_TTL_MS
+      ? { ...movie, ...cached.data }
+      : movie;
+  });
+
+  if (!imdbWarmupInProgress) {
+    imdbWarmupInProgress = true;
+    (async () => {
+      try {
+        for (let i = 0; i < movies.length; i += 5) {
+          await Promise.all(movies.slice(i, i + 5).map(getImdbMetadata));
+        }
+      } finally {
+        imdbWarmupInProgress = false;
+      }
+    })().catch(err => console.error('IMDb background lookup failed:', err.message));
   }
-  return enriched;
+
+  return response;
 }
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY || '';
