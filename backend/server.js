@@ -75,6 +75,48 @@ function requireAdmin(req, res, next) {
 }
 
 // ---------- TMDB metadata sync (metadata/posters only; never downloads video) ----------
+const OMDB_API_KEY = process.env.OMDB_API_KEY || '';
+const imdbRatingCache = new Map();
+const IMDB_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+
+async function getImdbMetadata(movie) {
+  const title = String(movie.title || '').trim();
+  if (!OMDB_API_KEY || !title) return movie;
+  const year = String(movie.year || '').match(/\\d{4}/)?.[0] || '';
+  const cacheKey = title.toLowerCase() + '|' + year;
+  const cached = imdbRatingCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < IMDB_CACHE_TTL_MS) return { ...movie, ...cached.data };
+  try {
+    const url = new URL('https://www.omdbapi.com/');
+    url.searchParams.set('apikey', OMDB_API_KEY);
+    url.searchParams.set('t', title);
+    if (year) url.searchParams.set('y', year);
+    const response = await fetch(url, { headers: { accept: 'application/json' } });
+    if (!response.ok) throw new Error('OMDb HTTP ' + response.status);
+    const data = await response.json();
+    const rating = data.Response === 'True' && /^\\d+(\\.\\d+)?$/.test(data.imdbRating || '') ? data.imdbRating : '';
+    const metadata = {
+      imdbRating: rating,
+      imdbVotes: data.imdbVotes && data.imdbVotes !== 'N/A' ? data.imdbVotes : '',
+      imdbID: data.imdbID && data.imdbID !== 'N/A' ? data.imdbID : ''
+    };
+    imdbRatingCache.set(cacheKey, { at: Date.now(), data: metadata });
+    return { ...movie, ...metadata };
+  } catch (err) {
+    console.error('IMDb rating lookup failed for "' + title + '":', err.message);
+    return movie;
+  }
+}
+
+async function addImdbRatings(movies) {
+  if (!OMDB_API_KEY || !movies.length) return movies;
+  const enriched = [];
+  for (let i = 0; i < movies.length; i += 5) {
+    enriched.push(...await Promise.all(movies.slice(i, i + 5).map(getImdbMetadata)));
+  }
+  return enriched;
+}
+
 const TMDB_API_KEY = process.env.TMDB_API_KEY || '';
 const TMDB_READ_ACCESS_TOKEN = process.env.TMDB_READ_ACCESS_TOKEN || '';
 let lastTmdbSyncAt = 0;
@@ -165,7 +207,8 @@ app.get('/api/movies', async (req, res) => {
       filter.$or = [{ title: rx }, { synopsis: rx }, { language: rx }];
     }
     const movies = await Movie.find(filter).sort({ createdAt: -1 }).select('-_id -__v').lean();
-    res.json(movies);
+    const ratedMovies = await addImdbRatings(movies);
+    res.json(ratedMovies);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not load movies' });
