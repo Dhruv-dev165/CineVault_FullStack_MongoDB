@@ -383,3 +383,5 @@ async function shutdown() {
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+
+// Frontend catalogue syntax fix is deployed with this backend commit.
