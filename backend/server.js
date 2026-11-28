@@ -218,6 +218,58 @@ function maybeSyncTmdb() {
   }
 }
 
+async function fetchMovieMetadata(title, year) {
+  if (!TMDB_API_KEY && !TMDB_READ_ACCESS_TOKEN) return {};
+  const headers = { accept: 'application/json' };
+  if (TMDB_READ_ACCESS_TOKEN) headers.Authorization = `Bearer ${TMDB_READ_ACCESS_TOKEN}`;
+  const searchUrl = new URL('https://api.themoviedb.org/3/search/movie');
+  searchUrl.searchParams.set('query', String(title || '').slice(0, 120));
+  searchUrl.searchParams.set('include_adult', 'false');
+  searchUrl.searchParams.set('language', 'en-US');
+  searchUrl.searchParams.set('region', 'IN');
+  if (year && /^\\d{4}$/.test(String(year))) searchUrl.searchParams.set('year', String(year));
+  if (TMDB_API_KEY) searchUrl.searchParams.set('api_key', TMDB_API_KEY);
+  const searchResponse = await fetch(searchUrl, { headers });
+  if (!searchResponse.ok) throw new Error('TMDB search HTTP ' + searchResponse.status);
+  const matches = (await searchResponse.json()).results || [];
+  if (!matches.length) return {};
+  const picked = matches[0];
+  const detailUrl = new URL(`https://api.themoviedb.org/3/movie/${picked.id}`);
+  detailUrl.searchParams.set('append_to_response', 'credits,external_ids');
+  detailUrl.searchParams.set('language', 'en-US');
+  if (TMDB_API_KEY) detailUrl.searchParams.set('api_key', TMDB_API_KEY);
+  const detailResponse = await fetch(detailUrl, { headers });
+  if (!detailResponse.ok) throw new Error('TMDB details HTTP ' + detailResponse.status);
+  const detail = await detailResponse.json();
+  const imdbID = detail.external_ids?.imdb_id || '';
+  let imdbRating = '', imdbVotes = '';
+  if (OMDB_API_KEY && imdbID) {
+    const omdbUrl = new URL('https://www.omdbapi.com/');
+    omdbUrl.searchParams.set('apikey', OMDB_API_KEY);
+    omdbUrl.searchParams.set('i', imdbID);
+    const omdbResponse = await fetch(omdbUrl);
+    const omdb = await omdbResponse.json();
+    if (omdb.Response === 'True') {
+      imdbRating = omdb.imdbRating !== 'N/A' ? (omdb.imdbRating || '') : '';
+      imdbVotes = omdb.imdbVotes !== 'N/A' ? (omdb.imdbVotes || '') : '';
+    }
+  }
+  const director = (detail.credits?.crew || []).find(person => person.job === 'Director')?.name || '';
+  return {
+    tmdbId: detail.id, imdbID, imdbRating, imdbVotes,
+    year: (detail.release_date || '').slice(0, 4) || String(year || ''),
+    releaseDate: detail.release_date || '',
+    language: detail.original_language || '',
+    poster: detail.poster_path ? `https://image.tmdb.org/t/p/w500${detail.poster_path}` : '',
+    backdrop: detail.backdrop_path ? `https://image.tmdb.org/t/p/w1280${detail.backdrop_path}` : '',
+    synopsis: detail.overview || '',
+    genres: (detail.genres || []).map(genre => genre.name),
+    runtime: detail.runtime || null,
+    director,
+    cast: (detail.credits?.cast || []).slice(0, 8).map(person => person.name)
+  };
+}
+
 // ---------- App ----------
 const app = express();
 app.set('trust proxy', 1); // needed behind Render/Railway proxies so req.ip is the real client
@@ -368,6 +420,12 @@ app.post('/api/movies', requireAdmin, async (req, res) => {
     if (!title || typeof title !== 'string') {
       return res.status(400).json({ error: 'Title is required.' });
     }
+    let metadata = {};
+    try {
+      metadata = await fetchMovieMetadata(title.trim(), year);
+    } catch (metadataError) {
+      console.error('Automatic movie metadata lookup failed:', metadataError.message);
+    }
     const cleanLinks = {};
     for (const q of QUALITIES) {
       const val = typeof links[q] === 'string' ? links[q].trim() : '';
@@ -380,22 +438,22 @@ app.post('/api/movies', requireAdmin, async (req, res) => {
       id: 'mov_' + Date.now(),
       title: title.trim(),
       category: category || 'Bollywood',
-      year: year || '2026',
+      year: year || metadata.year || '2026',
       qualityTag: qualityTag || '1080p WEB-DL',
-      language: language || 'Hindi / Dual Audio',
+      language: language || metadata.language || 'Hindi / Dual Audio',
       size: size || '',
-      poster: typeof poster === 'string' && isHttpUrl(poster) ? poster.trim() : '',
-      synopsis: synopsis || 'Full HD movie available for direct download.',
-      tmdbId: Number.isInteger(Number(tmdbId)) && tmdbId ? Number(tmdbId) : null,
-      imdbID: typeof imdbID === 'string' ? imdbID.slice(0, 30) : '',
-      imdbRating: typeof imdbRating === 'string' ? imdbRating.slice(0, 10) : '',
-      imdbVotes: typeof imdbVotes === 'string' ? imdbVotes.slice(0, 30) : '',
-      genres: Array.isArray(genres) ? genres.slice(0, 12).map(v => String(v).slice(0, 40)) : [],
-      director: typeof director === 'string' ? director.slice(0, 120) : '',
-      cast: Array.isArray(cast) ? cast.slice(0, 12).map(v => String(v).slice(0, 100)) : [],
-      runtime: Number.isFinite(Number(runtime)) && Number(runtime) > 0 ? Number(runtime) : null,
-      backdrop: typeof backdrop === 'string' && isHttpUrl(backdrop) ? backdrop : '',
-      releaseDate: typeof releaseDate === 'string' ? releaseDate.slice(0, 20) : '',
+      poster: (typeof poster === 'string' && isHttpUrl(poster) ? poster.trim() : '') || metadata.poster || '',
+      synopsis: synopsis || metadata.synopsis || 'Full HD movie available for direct download.',
+      tmdbId: metadata.tmdbId || (Number.isInteger(Number(tmdbId)) && tmdbId ? Number(tmdbId) : null),
+      imdbID: metadata.imdbID || (typeof imdbID === 'string' ? imdbID.slice(0, 30) : ''),
+      imdbRating: metadata.imdbRating || (typeof imdbRating === 'string' ? imdbRating.slice(0, 10) : ''),
+      imdbVotes: metadata.imdbVotes || (typeof imdbVotes === 'string' ? imdbVotes.slice(0, 30) : ''),
+      genres: metadata.genres?.length ? metadata.genres : (Array.isArray(genres) ? genres.slice(0, 12).map(v => String(v).slice(0, 40)) : []),
+      director: metadata.director || (typeof director === 'string' ? director.slice(0, 120) : ''),
+      cast: metadata.cast?.length ? metadata.cast : (Array.isArray(cast) ? cast.slice(0, 12).map(v => String(v).slice(0, 100)) : []),
+      runtime: metadata.runtime || (Number.isFinite(Number(runtime)) && Number(runtime) > 0 ? Number(runtime) : null),
+      backdrop: metadata.backdrop || (typeof backdrop === 'string' && isHttpUrl(backdrop) ? backdrop : ''),
+      releaseDate: metadata.releaseDate || (typeof releaseDate === 'string' ? releaseDate.slice(0, 20) : ''),
       links: cleanLinks
     });
     const out = movie.toObject();
