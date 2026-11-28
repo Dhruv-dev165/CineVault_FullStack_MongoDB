@@ -286,6 +286,72 @@ app.post('/api/admin/tmdb-sync', requireAdmin, async (_req, res) => {
   }
 });
 
+// ADMIN: search TMDB and return verified movie metadata for the upload form
+app.get('/api/admin/metadata-search', requireAdmin, async (req, res) => {
+  try {
+    const query = String(req.query.query || '').trim().slice(0, 120);
+    if (query.length < 2) return res.status(400).json({ error: 'Enter at least 2 characters.' });
+    if (!TMDB_API_KEY && !TMDB_READ_ACCESS_TOKEN) {
+      return res.status(503).json({ error: 'TMDB_API_KEY or TMDB_READ_ACCESS_TOKEN is not configured on the server.' });
+    }
+    const headers = { accept: 'application/json' };
+    if (TMDB_READ_ACCESS_TOKEN) headers.Authorization = `Bearer ${TMDB_READ_ACCESS_TOKEN}`;
+    const searchUrl = new URL('https://api.themoviedb.org/3/search/movie');
+    searchUrl.searchParams.set('query', query);
+    searchUrl.searchParams.set('include_adult', 'false');
+    searchUrl.searchParams.set('language', 'en-US');
+    searchUrl.searchParams.set('region', 'IN');
+    if (TMDB_API_KEY) searchUrl.searchParams.set('api_key', TMDB_API_KEY);
+    const searchResponse = await fetch(searchUrl, { headers });
+    if (!searchResponse.ok) throw new Error('TMDB search HTTP ' + searchResponse.status);
+    const searchData = await searchResponse.json();
+    const candidates = (searchData.results || []).slice(0, 8);
+    const results = await Promise.all(candidates.map(async item => {
+      const detailUrl = new URL(`https://api.themoviedb.org/3/movie/${item.id}`);
+      detailUrl.searchParams.set('append_to_response', 'credits,external_ids');
+      detailUrl.searchParams.set('language', 'en-US');
+      if (TMDB_API_KEY) detailUrl.searchParams.set('api_key', TMDB_API_KEY);
+      const detailResponse = await fetch(detailUrl, { headers });
+      if (!detailResponse.ok) throw new Error('TMDB details HTTP ' + detailResponse.status);
+      const detail = await detailResponse.json();
+      const director = (detail.credits?.crew || []).find(person => person.job === 'Director')?.name || '';
+      const cast = (detail.credits?.cast || []).slice(0, 8).map(person => person.name);
+      const imdbID = detail.external_ids?.imdb_id || '';
+      let imdbRating = '', imdbVotes = '';
+      if (OMDB_API_KEY && imdbID) {
+        try {
+          const omdbUrl = new URL('https://www.omdbapi.com/');
+          omdbUrl.searchParams.set('apikey', OMDB_API_KEY);
+          omdbUrl.searchParams.set('i', imdbID);
+          const omdbResponse = await fetch(omdbUrl);
+          const omdb = await omdbResponse.json();
+          if (omdb.Response === 'True') {
+            imdbRating = omdb.imdbRating !== 'N/A' ? (omdb.imdbRating || '') : '';
+            imdbVotes = omdb.imdbVotes !== 'N/A' ? (omdb.imdbVotes || '') : '';
+          }
+        } catch (error) { console.error('OMDb metadata lookup failed:', error.message); }
+      }
+      return {
+        tmdbId: detail.id,
+        title: detail.title || detail.original_title || '',
+        year: (detail.release_date || '').slice(0, 4),
+        releaseDate: detail.release_date || '',
+        language: detail.original_language || '',
+        poster: detail.poster_path ? `https://image.tmdb.org/t/p/w500${detail.poster_path}` : '',
+        backdrop: detail.backdrop_path ? `https://image.tmdb.org/t/p/w1280${detail.backdrop_path}` : '',
+        synopsis: detail.overview || '',
+        genres: (detail.genres || []).map(genre => genre.name),
+        runtime: detail.runtime || null,
+        director, cast, imdbID, imdbRating, imdbVotes
+      };
+    }));
+    res.json({ results });
+  } catch (error) {
+    console.error('Metadata search failed:', error.message);
+    res.status(502).json({ error: 'Could not fetch movie metadata. Check TMDB credentials and try again.' });
+  }
+});
+
 // ADMIN: check password
 app.post('/api/admin/login', loginLimiter, (req, res) => {
   const { password } = req.body || {};
@@ -298,7 +364,7 @@ app.post('/api/admin/login', loginLimiter, (req, res) => {
 // ADMIN: add movie
 app.post('/api/movies', requireAdmin, async (req, res) => {
   try {
-    const { title, category, year, qualityTag, language, size, poster, synopsis, links = {} } = req.body || {};
+    const { title, category, year, qualityTag, language, size, poster, synopsis, links = {}, tmdbId, imdbID, imdbRating, imdbVotes, genres, director, cast, runtime, backdrop, releaseDate } = req.body || {};
     if (!title || typeof title !== 'string') {
       return res.status(400).json({ error: 'Title is required.' });
     }
@@ -320,6 +386,16 @@ app.post('/api/movies', requireAdmin, async (req, res) => {
       size: size || '',
       poster: typeof poster === 'string' && isHttpUrl(poster) ? poster.trim() : '',
       synopsis: synopsis || 'Full HD movie available for direct download.',
+      tmdbId: Number.isInteger(Number(tmdbId)) && tmdbId ? Number(tmdbId) : null,
+      imdbID: typeof imdbID === 'string' ? imdbID.slice(0, 30) : '',
+      imdbRating: typeof imdbRating === 'string' ? imdbRating.slice(0, 10) : '',
+      imdbVotes: typeof imdbVotes === 'string' ? imdbVotes.slice(0, 30) : '',
+      genres: Array.isArray(genres) ? genres.slice(0, 12).map(v => String(v).slice(0, 40)) : [],
+      director: typeof director === 'string' ? director.slice(0, 120) : '',
+      cast: Array.isArray(cast) ? cast.slice(0, 12).map(v => String(v).slice(0, 100)) : [],
+      runtime: Number.isFinite(Number(runtime)) && Number(runtime) > 0 ? Number(runtime) : null,
+      backdrop: typeof backdrop === 'string' && isHttpUrl(backdrop) ? backdrop : '',
+      releaseDate: typeof releaseDate === 'string' ? releaseDate.slice(0, 20) : '',
       links: cleanLinks
     });
     const out = movie.toObject();
