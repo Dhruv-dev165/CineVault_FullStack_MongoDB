@@ -17,3 +17,9 @@ services:
         sync: false        # paste your Atlas connection string in the Render dashboard
       - key: ADMIN_PASSWORD
         sync: false        # set a strong password in the Render dashboard
+      - key: TMDB_API_KEY
+        sync: false
+      - key: TMDB_READ_ACCESS_TOKEN
+        sync: false
+      - key: OMDB_API_KEY
+        sync: false
