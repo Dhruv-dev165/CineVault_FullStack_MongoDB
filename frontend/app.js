@@ -5,6 +5,7 @@ const title = document.getElementById("resultsTitle");
 let movies = [];
 let activeCategory = "All";
 let searchTerm = "";
+let ratingRefreshAttempted = false;
 
 const safe = value => String(value ?? "").replace(/[&<>"']/g, char => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -110,6 +111,14 @@ async function loadMovies() {
       ? movies.length + " titles loaded from CineVault"
       : "Catalogue is connected, but no titles are saved yet";
     render();
+
+    // IMDb ratings are warmed by the backend in the background. Refresh once
+    // after the first fast catalogue response so badges can appear without
+    // keeping the initial page load waiting on OMDb.
+    if (!ratingRefreshAttempted && movies.length && !movies.some(movie => movie.imdbRating)) {
+      ratingRefreshAttempted = true;
+      setTimeout(loadMovies, 12000);
+    }
   } catch (error) {
     movies = [];
     status.textContent = "Could not connect to the movie catalogue";
