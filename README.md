@@ -91,6 +91,16 @@ the database user with a strong password) or add the provider's static outbound 
 - The site links to external sources and does not host movie files. Only publish films whose specific
   edition is verified as public domain or licensed in your territory.
 
+## Automatic IMDb / TMDB metadata
+
+When an admin publishes a new movie, the backend now attempts to match its title (and year, when supplied) against TMDB. It saves the matched poster, backdrop, synopsis, release date, original language, genres, director, cast, runtime, TMDB ID, and IMDb ID with the movie record. If `OMDB_API_KEY` is configured, it also saves IMDb rating and vote count. The public movie details dialog displays the available IMDb and metadata fields.
+
+Configure these secrets in the Render service dashboard under **Environment** (or in local `backend/.env`):
+- `TMDB_API_KEY` — required for TMDB automatic metadata lookup (or use `TMDB_READ_ACCESS_TOKEN` instead).
+- `OMDB_API_KEY` — optional; enables IMDb rating and vote count lookup.
+
+Keep all API keys on the backend. Never put them in frontend files or commit real keys to GitHub. Metadata matching is best-effort; verify the selected title/year and edit inaccurate matches. This feature fetches metadata only, not movie/video files. Only publish content you are authorized to distribute.
+
 ## Troubleshooting
 - **`MONGODB_URI is not set`**: create `backend/.env` from `.env.example`.
 - **`MongoDB connection failed`**: check the password (URL-encode special characters), the database user, and
