@@ -84,3 +84,17 @@
 }
 .movie-info p { position:static; margin:0; color:var(--muted); font-size:11px; }
 @media (max-width:760px) { .movie-poster { height:auto; aspect-ratio:2 / 3; } }
+
+
+/* IMDb rating badge overlaid at the top-right of each poster. */
+.movie-poster { position:relative; }
+.poster-art { position:absolute; inset:0; width:100%; height:100%; }
+.imdb-rating-badge {
+  position:absolute; z-index:2; top:9px; right:8px;
+  display:inline-flex; align-items:center; gap:4px;
+  padding:5px 8px; border:1px solid #ffffff35; border-radius:7px;
+  background:rgba(8,11,16,.92); color:#fff; font-size:11px;
+  font-weight:800; line-height:1.2; box-shadow:0 2px 9px #0008;
+  backdrop-filter:blur(6px);
+}
+.imdb-star { color:#f5c518; font-size:13px; }
