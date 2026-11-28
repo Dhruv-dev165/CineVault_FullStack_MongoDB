@@ -27,7 +27,7 @@ function posterMarkup(movie) {
     ? '<span class="imdb-rating-badge" title="IMDb rating' + (movie.imdbVotes ? ' · ' + safe(movie.imdbVotes) + ' votes' : '') + '"><span class="imdb-star">★</span> IMDb ' + rating.toFixed(1) + '</span>'
     : '';
   const art = poster
-    ? '<img class="movie-poster-image" src="' + safe(poster) + '" alt="' + safe(movie.title || movie.name || "Movie poster") + '" loading="lazy" onerror="this.style.display=\\'none\\';this.nextElementSibling.style.display=\\'grid\\'"><div class="movie-poster-fallback" style="display:none">🎬</div>'
+    ? '<img class="movie-poster-image" src="' + safe(poster) + '" alt="' + safe(movie.title || movie.name || "Movie poster") + '" loading="lazy"><div class="movie-poster-fallback" style="display:none">🎬</div>'
     : '<div class="movie-poster-fallback">🎬</div>';
   return '<div class="poster-art">' + art + '</div>' + ratingBadge;
 }
@@ -64,6 +64,14 @@ function render() {
       safe(movie.year || "") + (movie.language ? ' · ' + safe(movie.language) : "") + '</p></div>' +
     '</article>'
   ).join("");
+
+  // Replace broken poster images with the local fallback without inline JS.
+  grid.querySelectorAll(".movie-poster-image").forEach(img => {
+    img.addEventListener("error", () => {
+      img.style.display = "none";
+      if (img.nextElementSibling) img.nextElementSibling.style.display = "grid";
+    }, { once: true });
+  });
 }
 
 function openMovie(movie) {
